@@ -37,6 +37,8 @@ def get_coordinates(image_path, area_name):
     root = tk.Tk()
     root.title(f"Click to Mark Coordinates for {area_name}")
 
+    frame = tk.Frame(root)
+    frame.pack(padx=10, pady=10)
     photo = ImageTk.PhotoImage(image)
     canvas = tk.Canvas(root, width=resized_width, height=resized_height)
     canvas.pack()
@@ -55,13 +57,12 @@ def load_or_get_coordinates(base_map_path, areas):
         json_path = f"{area}_coordinates.json"
         if os.path.exists(json_path):
             with open(json_path, "r") as f:
-                regions_coordinates[area] = json.load(f)
-            os.remove(json_path)
-            print(f"Deleted {json_path} after loading coordinates.")
+                regions_coordinates[area] = [tuple(map(int, coord)) for coord in json.load(f)]
         else:
             print(f"Collecting coordinates for {area}")
             regions_coordinates[area] = get_coordinates(base_map_path, area)
     return regions_coordinates
+
 
 base_map_path = "Location-of-the-Illinois-River-basin_W640.jpg"
 if not os.path.exists(base_map_path):
@@ -69,14 +70,15 @@ if not os.path.exists(base_map_path):
 
 base_map = Image.open(base_map_path)
 
-areas = [
-    "Area 1 - Mississippi River to Saginaw River",
-    "Area 2 - Saginaw River to Mackinac River",
-    "Area 3 - Mackinac River to Vermillion River",
-    "Area 4 - Vermillion River to Lake Michigan",
-    "Area 5 - Lake Michigan"
-]
-regions_coordinates = load_or_get_coordinates(base_map_path, areas)
+area_colors = {
+    "Area 1 - Mississippi River to Saginaw River": "blue",
+    "Area 2 - Saginaw River to Mackinac River": "green",
+    "Area 3 - Mackinac River to Vermillion River": "orange",
+    "Area 4 - Vermillion River to Lake Michigan": "purple",
+    "Area 5 - Lake Michigan": "brown",
+}
+
+regions_coordinates = load_or_get_coordinates(base_map_path, area_colors)
 
 csv_path = "river_areas_dataset.csv"
 if not os.path.exists(csv_path):
@@ -93,17 +95,18 @@ for index, row in df.iterrows():
     for area, status in row.items():
         if area.startswith("Area") and status == "Y":
             if area in regions_coordinates and len(regions_coordinates[area]) > 1:
+                color = area_colors.get(area, "red") 
                 for i in range(len(regions_coordinates[area]) - 1):
                     draw.line(
                         [regions_coordinates[area][i], regions_coordinates[area][i + 1]],
-                        fill="red",
-                        width=3,
+                        fill=color,
+                        width=5,
                     )
 
     try:
         font = ImageFont.truetype("arialbd.ttf", 40) 
     except IOError:
-        font = None 
+        font = None  
     draw.text((50, 50), f"Year: {year}", fill="black", font=font)
 
     frames.append(current_map)
